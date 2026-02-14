@@ -158,6 +158,9 @@ fn test_shadowing()
 
 // greatest common Divisor
 fn gcd(a: u32, b: u32) -> u32 {
+    // b作为余数
+    // 代码块（{}）的最后一个表达式默认作为返回值（隐式返回），
+    // 但也可以使用 return 关键字进行显式返回。这两种写法是等价的
     if b > 0 {
         gcd(b, a % b)
     } else {
@@ -165,10 +168,111 @@ fn gcd(a: u32, b: u32) -> u32 {
     }
 }
 
-fn test_gcd() {
-    println!("gcd: {}", gcd(143, 52));
+fn gcd_semicolon(a:u32, b:u32) -> u32{
+    if b == 0 {
+        return a;
+    } else {
+        // 不带分号的行是一个表达式 (Expression)，它的结果会被返回。
+        // 带分号的行是一个语句 (Statement)，它的返回值被丢弃，总是返回 () (空元组/Unit type)。
+        // 所以不加return的话，这样会错:
+        // gcd1(b, a % b); // 一直返回的是()
+        return gcd_semicolon(b, a % b);
+    }
 }
 
+fn gcd_without_semicolon(a:u32, b:u32) -> u32{
+    if b == 0 {
+        return a;
+    } else {
+        // 不带分号的行是一个表达式 (Expression)，它的结果会被返回。
+        // 带分号的行是一个语句 (Statement)，它的返回值被丢弃，总是返回 () (空元组/Unit type)。
+        gcd_without_semicolon(b, a % b)
+    }
+}
+
+fn gcd_iterative(mut a:u32, mut b:u32) -> u32{
+    while b != 0 {
+        let tmp = b;
+        b = a % b;
+        a = tmp;
+    }
+    a
+    // return a;
+}
+
+fn test_gcd() {
+    println!("=====test_gcd=====");
+    println!("gcd: {}", gcd(143, 52));
+    println!("gcd_semicolon: {}", gcd_semicolon(143, 52));
+    println!("gcd_withoutSemicolon: {}", gcd_without_semicolon(143, 52));
+    println!("gcd_iterative: {}", gcd_iterative(143, 52));
+}
+
+fn test_macro_factorial(n: u32) -> u32 {
+    let mut product = 1;
+    for i in 1..=n {
+        product *= dbg!(i);
+    }
+    product
+}
+
+fn test_macro_fizzbuzz(_n: u32) -> u32 {
+    todo!()
+}
+
+fn test_macro() {
+    // println!(format, ..) prints a line to standard output, applying formatting described in std::fmt.
+    // format!(format, ..) 的用法与 println! 类似，但它以字符串形式返回结果。
+    // dbg!(expression) 会记录表达式的值并返回该值。
+    // todo!() 用于标记尚未实现的代码段。如果执行该代码段，则会触发 panic。
+    // unreachable!() 用于标记无法访问的代码段。如果执行该代码段，则会触发 panic。
+    let n = 4;
+    println!("{n}! = {}", test_macro_factorial(n));
+
+    // test_macro_fizzbuzz();
+}
+
+// 考拉兹序列（Collatz Sequence），也被称为 3n + 1 问题、冰雹猜想（Hailstone Sequence）或 奇偶归一猜想
+// Determine the length of the collatz sequence beginning at `n`.
+fn collatz_length(mut n: i32) -> u32 {
+//   todo!("Implement this")
+    let mut len = 1;
+    while n > 1 {
+        if n % 2 == 0 {
+            n = n / 2;
+        } else {
+            n = 3*n + 1;
+        }
+        len += 1;
+    }
+    return len;
+}
+
+fn collatz_length2(mut n: i32) -> u32 {
+//   todo!("Implement this")
+    let mut len = 1;
+    while n > 1 {
+        n = if n % 2 == 0 { n / 2 } else { 3 * n + 1 };
+        len += 1;
+    }
+    len
+}
+
+#[test]
+fn test_collatz_length(){
+    assert_eq!(collatz_length(11), 15);
+}
+
+fn test_collatz_sequence()
+{
+    println!("=====test_collatz_sequence=====");
+    println!("Length: {}", collatz_length(11));
+    println!("Length2: {}", collatz_length2(11));
+}
+ 
+
+
+/////////////////////////////////////////////////////
 fn main() {
     println!("Hello, world!");
 
@@ -208,4 +312,8 @@ fn main() {
     test_shadowing();
 
     test_gcd();
+
+    test_macro();
+
+    test_collatz_sequence();
 }
