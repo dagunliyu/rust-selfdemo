@@ -44,7 +44,7 @@ fn test_shared_references(){
     dbg!(r);
 
     // `r` is a `&` reference, so the data it refers to cannot be written
-    // C++可以修改引用的值
+    // C++可以修改引用的值，但Rust不允许
     // *r = 'C';
 
     x_axis(5);
@@ -66,26 +66,100 @@ fn x_axis(x: i32) -> (i32, i32) {
 //================================================================
 
 // “独占”意味着只有此引用才能访问该值。不能同时存在其他引用（共享或独占），并且在独占引用存在期间，无法访问被引用的值。
-fn test_exclusive_references(){
+fn test_exclusive_shared_references(){
     println!("=====test_exclusive_references=====");
-    let mut point = (1,2);
-    let x_coord = &mut point.0;
-    *x_coord = 22;
-    println!("point: {point:#?}");
+
+    // let mut point = (1,2);
+    // let x_coord = &mut point.0;
+    // *x_coord = 22;
+    // println!("point: {point:#?}");
+    // // Try making an &point.0 or changing point.0 while x_coord is alive.
+    // let testexclusive = &point.0;
+    // println!("testexclusive: {testexclusive:#?}");
+
+    // Tips: mut修饰的是变量，不是引用
+
+    let mut _mut_xcoord: &i32;  // 共享引用 - 变量可以重新绑定到新的引用
+    let _xcoord: &i32;          // 共享引用 - 绑定后不能改指向   
+    let _xcoord_mut: &mut i32;  // 独占引用
+
+    // ---- 1. 独占引用（&mut）：可以修改值 ----
+    let mut point = (1, 2);
+    println!("原始 point: {point:?}");
+
+    let x_ex = &mut point.0; // &point.0 不加mut只加引用就是共享引用了
+    *x_ex = 12;
+    println!("修改后 *x_ex = {x_ex}");
+
+    let x_coord = &mut point.0;  // 独占引用
+    *x_coord = 22;               // 通过独占引用修改值
+    println!("修改后 *x_coord = {x_coord}");
+    // x_coord 在这之后不再使用，独占引用结束
+
+    // ---- 2. 共享引用（&）：只读，可以同时存在多个 ----
+    // 共享引用是immutable borrow
+    let r1 = &point.0;  // 共享引用 1
+    let r2 = &point.0;  // 共享引用 2，允许同时存在
+    println!("r1 = {r1}, r2 = {r2}");  // 多个共享引用可以同时读
+
+    let mut rm1 = &point.0;
+    let mut rm2 = &point.1;
+    println!("rm1 = {rm1}, rm2 = {rm2}");  // 多个共享引用可以同时读
 
 
-    // Try making an &point.0 or changing point.0 while x_coord is alive.
-    let testexclusive = &point.0;
-    println!("testexclusive: {testexclusive:#?}");
 
-    let mut x_coord: &i32;  // 共享引用
-    let x_coord: &mut i32;  // 独占引用
+
+    // ---- 3. 共享引用不能修改值 ----
+    // *r1 = 99;  // 编译错误：不能通过共享引用修改值
+
+    // ---- 4. 独占引用存在时，不能有共享引用 ----
+    // 独占引用是mutable borrow
+    let x_mut = &mut point.1; // x_mut 的类型是 &mut i32
+    *x_mut = 42;
+
+    // x_mut持有 &mut point.1. 对point.1是独占引用/独占借用
+    // 后面还会用x_mut, 独占借用存活期间，不能以任何方式访问point.1
+
+    //cannot borrow `point.1` as immutable because it is also borrowed as mutable
+    // let r3 = &point.1;       // 编译错误：独占引用 x_mut 还活着，不能再借用
+    // println!("{}", point.1);  // 编译错误：独占引用 x_mut 还活着，不能直接访问 
+
+
+    // ---- 共享引用和独占引用的copy ----
+    // x_mut;   // 错误: &mut 引用不实现 Copy（独占性决定的）, 后面 println! 还想用 x_mut，但值已经被 move 了，所以报错
+    // point.1; // 错误: 独占借用存活期间，不能以任何形式访问point.1
+    // 关键区别：&（共享引用）实现了 Copy，写 r1; 不会消耗它；
+    // 而 &mut（独占引用）不实现 Copy，写 x_mut; 就把它 move 掉了。
+ 
+    // ---- 为什么单独写x_mut会把这个引用move掉？ ----
+    // 任何表达式语句都会消耗（move）它的值，除非该类型实现了 Copy。
+    // x_mut; 这一行是一个"表达式语句"，它的效果是：
+    // 求值 x_mut（即读取这个变量）, 得到的值没有被赋给任何人 → 直接 drop
+    // Copy 的语义是"复制一份，原始变量仍然有效"。
+    // 但 &mut T 是独占引用，同一时刻只能存在一个 &mut T 指向同一个值。
+    // 如果 &mut T 实现了 Copy，就可以同时复制出多个 &mut T，独占性就被破坏了。
+    // 所以 Rust 故意不让 &mut T 实现 Copy。
+
+
+    println!("修改后 *x_mut = {x_mut}");
+    // x_mut 在这之后不再使用，独占引用结束
+
+    // ---- 5. 独占引用结束后，又可以正常访问了 ----
+    println!("最终 point: {point:?}");
 }
 
 //================================================================
 fn test_slices(){
     println!("=====test_slices=====");
+    let a: [i32; 6] = [10, 20, 30, 40, 50, 60];
+    println!("a: {a:?}");
 
+    let s: &[i32] = &a[2..4];
+    println!("s: {s:?}");
+
+    let aa: [u32; 5] = [3,4,4,4,4];
+    let ss: &[u32] = &aa[3..=5];
+    println!("ss: {ss:?}");
 }
 
 //================================================================
@@ -112,7 +186,7 @@ fn main() {
 
     test_shared_references();
 
-    test_exclusive_references();
+    test_exclusive_shared_references();
 
     test_slices();
 
