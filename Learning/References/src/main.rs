@@ -103,9 +103,9 @@ fn test_exclusive_shared_references(){
     println!("r1 = {r1}, r2 = {r2}");  // 多个共享引用可以同时读
 
     let mut rm1 = &point.0;
-    let mut rm2 = &point.1;
+    let rm2 = &point.1;
     println!("rm1 = {rm1}, rm2 = {rm2}");  // 多个共享引用可以同时读
-
+    rm1 = rm2;
 
 
 
@@ -149,7 +149,55 @@ fn test_exclusive_shared_references(){
 }
 
 //================================================================
-fn test_slices(){
+
+struct Point {
+    x: u32,
+    y: u32,
+}
+
+fn modify_coordinates(pnt: &mut Point) {
+    let x_ref = &mut pnt.x;
+    let y_ref = &mut pnt.y;
+    x_ref += 2;
+    y_ref += 2;
+    println!("pnt after modify: {:?}", (pnt.x, pnt.y));
+}
+
+fn test_split_borrowing() {
+    println!("=====test_split_borrowing=====");
+
+    let pnt = 
+}
+
+fn test_split_borrowing() {
+    println!("=====test_split_borrowing=====");
+
+    
+    #[derive(Debug)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+
+    let make_point = |x: i32, y: i32| Point { x, y };
+    let modify_coordinates = |pnt: &mut Point| {
+        let x_ref = &mut pnt.x;
+        let y_ref = &mut pnt.y;
+        *x_ref += 1;
+        *y_ref += 1;
+    };
+
+    let mut pnt = make_point(2, 3);
+    modify_coordinates(&mut pnt);
+    println!("pnt after modify: {:?}", (pnt.x, pnt.y));
+}
+
+//================================================================
+fn test_slices() {
+    // [T; N] 和 [T] 是两种不同的类型。
+    // 数组 [T; N]：长度 N 是类型的一部分，写在类型里。
+    // 切片 [T]：类型本身不带长度，长度是运行时附在胖指针里的。
+
     println!("=====test_slices=====");
     let a: [i32; 6] = [10, 20, 30, 40, 50, 60];
     println!("a: {a:?}");
@@ -157,8 +205,56 @@ fn test_slices(){
     let s: &[i32] = &a[2..4];
     println!("s: {s:?}");
 
-    let aa: [u32; 5] = [3,4,4,4,4];
-    let ss: &[u32] = &aa[3..=5];
+    let all: &[i32] = &a[0..a.len()];
+    let all2: &[i32] = &a[..a.len()];
+    println!("all use {{&a[0..a.len()]}}: {all:?}");
+    println!("all2 use {{&a[..a.len()]}}: {all2:?}");
+ 
+    let test_last_Index: &[i32] = &a[3..a.len()];
+    let test_last_Index2: &[i32] = &a[3..];
+    println!("test_last_Index use {{&a[3..a.len()]}}: {test_last_Index:?}");
+    println!("test_last_Index2 use {{&a[3..]}}: {test_last_Index2:?}");
+
+
+    let aa: [u32; 5] = [3,4,5,6,7];
+    // bb[0..5]  类型[u32]  ❌ 切片类型不携带长度
+    // &bb[0..5] 类型&[u32] ✅ 引用 = 指针+长度，大小固定
+
+    let _bb: &[u32] = &aa[..aa.len()];
+    // _bb 就是一个胖指针： [ aa的起始地址 | 长度=aa的长度 ]
+    
+    // ===== error 写法分析: let bb = aa[0..5]; 
+
+    // Rust 类型系统做了一个设计决策：用 range .. 对数组取索引，结果永远是 [T]，而不是 [T; N]。
+    // 即便写的是常量范围 0..5，编译器也不会把结果当作 [u32; 5] 来处理——那样类型系统会非常复杂。
+    // 加上 &，把它变成大小确定的"胖指针"才能使用。
+
+    // 
+
+    // aa[0..5]的类型是[u32], 是一个大小不确定的类型，不能直接放在栈上赋给变量
+    // 切片类型不携带长度, 在rust的类型系统里就是unsized(大小不固定)的
+    // 所以即使写了0..5这种语法，依然改变不了a[0..5]是切片类型的事实，这里是[u32]
+    // rust要求在编译期就知道每个变量占多大内存
+    // 必须通过引用来使用切片
+
+    // ==== fat pointer ====
+    // 普通指针：只存一个内存地址，占 8 字节（64位系统）。
+    // 胖指针(针对普通指针而言)：存两个字段，占 16 字节： 一个内存地址（指向数据）+ 一个额外的元数据
+    
+    // rust有2种胖指针:
+    // 1-切片引用: &[T]
+    // [ 指针地址 | 长度 length ]
+    //   8字节       8字节       = 16字节
+    // 所以 &[u32] 能在运行时知道有几个元素。
+
+    // 2-trait对象: &dyn Trait
+    // [ 指针地址 | vtable指针 ]
+    // 8字节       8字节       = 16字节
+    // vtable 指向这个具体类型实现的方法表。
+    // =====================
+
+    // aa[3..5] 还是左闭右开,取的是第3和第4个值
+    let ss: &[u32] = &aa[3..5]; // 3..=5 error
     println!("ss: {ss:?}");
 }
 
@@ -185,8 +281,9 @@ fn main() {
     println!("References!");
 
     test_shared_references();
-
     test_exclusive_shared_references();
+    test_split_borrowing(); // 分割借用
+
 
     test_slices();
 
