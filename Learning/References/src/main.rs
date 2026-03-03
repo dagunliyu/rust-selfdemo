@@ -166,7 +166,7 @@ fn modify_coordinates(pnt: &mut Point) {
 fn test_split_borrowing() {
     println!("=====test_split_borrowing=====");
 
-    let pnt = 
+    let pnt = &mut Point {2,3};
 }
 
 fn test_split_borrowing() {
