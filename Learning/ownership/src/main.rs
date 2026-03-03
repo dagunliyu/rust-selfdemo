@@ -8,7 +8,7 @@ fn read(y: bool)
 
 fn test_data_in_stack(){
     let a = [0; 1_000_000];
-    let b = a; // copy 
+    let _b = a; // copy 
 }
 
 fn test_data_in_heap() {
@@ -22,7 +22,7 @@ fn test_data_in_heap() {
     let a = Box::new([0; 1_000_000]); 
 
     // 将a复制给b，复制的是这个指针，这个数组在堆内存里的地址；
-    let b = a;
+    let _b = a;
     // 赋值完成后，a被移动了；
 }
 
@@ -69,7 +69,7 @@ fn implicit_and_explicit_unref() {
 fn ieu_prob1() {
     println!("=====test_ieu_prob1=====");
     let x = Box::new(3);
-    let y = Box::new(&x);
+    let _y = Box::new(&x);
 
     // 如果想复制出通过y得到的数字3，需要使用多少次解引用?
     // 真坑，要三次解引用才行，因为要“拆Box<>“????
@@ -110,7 +110,37 @@ fn test_ieu() {
 
 fn test_alias_and_mutation()
 {
-    
+    // vec![1,2,3]是一个宏，可以理解为一个可变数组，再加mut，就可以使用push添加元素进去了
+    let mut v: Vec<i32> = vec![1,2,3];
+    v.push(4);
+
+    let mut v2: Vec<i32> = vec![1,2,3];
+    let num = &v2[2];
+    v.push(4);  // 会创建新的空间，把所有的复制过去
+    // num invalid
+    //  undefined behavior: pointer used after its pointee is free
+    println!("Third element is {}", *num);
+
+
+    // 不能使用多个box指针，指向同一块数据
+    let x = Box::new(1); // Box是有所有权的指针
+    let y = x; // 赋值给y，x就失去对box的所有权了
+    // 实现了move trait
+    // x已经被移动了，不能再访问原来的数据了
+    // 此时的y，是唯一一个可以访问该数据的Box指针
+    // println!("x: {}", x); // ERROR
+    println!("y: {}", y);
+    // Box不能别名，即多个Box不可能指向同一块地址
+
+    // 是否可以让多个变量同时指向一个box数据呢
+    let r1 = &y;
+    let r2 = &y;
+    println!("r1: {r1}, r2: {r2}");
+    // 他是不能多个指针同时指向一个堆数据，但是可以同时指向一个栈数据
+    // 不是几个变量指向堆的问题, rust的安全机制要求 对同一块数据同时只能一个变量持有和写操作
+
+	// Box是有所有权的指针,多个Box不能指向同一块地址
+    // 引用是无所有权的指针，临时创建别名
 }
 
 //=====================================
@@ -143,6 +173,8 @@ fn main() {
 
     // *x0_ref += 1; // immutable borrowed context 不可变借用上下文->其借用的东西是不可变的
     x0_ref = &y1; // xref可以指向其他变量
+    // *x0_ref += 1;
+    println!("x0_ref is {x0_ref}");
 
     test_data_in_stack();
     test_data_in_heap();
