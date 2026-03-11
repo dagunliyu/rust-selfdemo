@@ -36,12 +36,18 @@ fn test_shared_references(){
     let a = 'A';
     let b = 'B';
     // let mut r: &char = &a;
-    let mut r = &a;
+    let mut r = &a; // 可以改变指向（rebinding）; r这个变量本身是可变的，但它持有的引用是不可变的（&char）
+    let rr = &a;    // 不可以改变指向; rr这个变量是不变的，它持有的引用也是不可变的。
+    // *r = 'C'     // 非法, 不能修改数据
     println!("r: {}", *r);
     dbg!(r);
-    r = &b;
+    r = &b;         // r指向b了
     println!("r: {}", *r);
     dbg!(r);
+
+    // mut r 就像你可以把手里的望远镜转向看别的物体。
+    // rr 就像望远镜被固定在架子上，焊死只能看这一个物体。
+    // 两者都只是“看”（只读引用），都不能伸手过去改物体本身。
 
     // `r` is a `&` reference, so the data it refers to cannot be written
     // C++可以修改引用的值，但Rust不允许
@@ -155,18 +161,86 @@ struct Point {
     y: u32,
 }
 
-fn modify_coordinates(pnt: &mut Point) {
-    let x_ref = &mut pnt.x;
+fn modify_coordinates_mut_ref(pnt: &mut Point) {
+    let x_ref = &mut pnt.x; 
     let y_ref = &mut pnt.y;
-    x_ref += 2;
-    y_ref += 2;
-    println!("pnt after modify: {:?}", (pnt.x, pnt.y));
+    *x_ref += 2; // x_ref += 2;  // x_ref是引用, 不是值
+    *y_ref += 2; // y_ref += 2;
+    println!("pnt(mut ref) after modify: {:?}", (pnt.x, pnt.y));
 }
 
-fn test_split_borrowing() {
-    println!("=====test_split_borrowing=====");
+fn modify_coordinates_ref(pnt: &Point) {
+    println!("pnt(ref) is {:?}", (pnt.x, pnt.y));
+}
 
-    let pnt = &mut Point {2,3};
+fn test_split_borrowing2() {
+    println!("=====test_split_borrowing2=====");
+
+    // let pnt = &mut Point {2,3};
+    
+    // Point初始化时必须写字段名
+    let mut pnt = Point {x:3, y:4};
+    let pnt1 = Point {x:3, y:4}; // Rust 默认一切都是不可变的，想改必须显式写 mut。
+
+    let pnt_ref = &mut Point{x:3, y:6};
+
+    // 元组结构体没有命名的字段，所以必须使用 索引 来访问，就像普通元组一样
+    // 元组结构体主要用于 "Newtype 模式"，或者当字段名不那么重要时
+    struct PointTuple(u32, u32); // 元组结构体
+    let pnt_tup = PointTuple(12, 13);
+    println!("pnt(ref) is {} and {}", pnt_tup.0, pnt_tup.1);
+
+    modify_coordinates_ref(&pnt); 
+    modify_coordinates_mut_ref(&mut pnt); // 直接pnt就是一个可变变量，传&mut pnt就是传它的可变引用了
+}
+
+fn test_struct_tuple() {
+    
+    // 它介于"普通元组"（无名无姓）和"普通结构体"（有名有姓）之间。
+    // 它有一个有意义的类名，但偷懒省去了字段名。
+
+    // 用途1: 给普通类型加标签
+    // 底层都是u32, 但是此时已经不是同一个类型
+    struct Pounds(u32);
+    struct Kilograms(u32);
+    let p = Pounds(22);
+    let k = Kilograms(33);
+    // let pk = p + k; // error: different types
+
+    // 用途2: 简单封装：
+    // 当你只需要包装一两个值，而且含义很明显（比如 RGB 颜色、坐标点），懒得起字段名时。
+    struct Color(i32, i32, i32); // RGB，大家约定俗成知道顺序
+    struct Point(i32, i32);      // x, y 坐标
+
+    // 用途3: 单元素包装：
+    // 用来为外部类型实现 Trait（绕过孤儿规则）。
+    struct MyVec(Vec<i32>); 
+    // 现在你可以给 MyVec 实现你自己定义的 Trait 了
+
+
+    // 孤儿规则
+
+
+    //================== 元组结构体 vs 元组 ==================
+    // 只是临时把几个数捆在一起（比如函数返回 (x, y)），用 元组。
+    // 需要给这个组合起个名字，或者为了安全防止混用，或者想给它加自定义行为，用 元组结构体。
+    // 
+    // 元组结构体（Tuple Struct）和普通元组（Tuple）在内存布局上几乎一样，但在语义和用法上有关键区别。
+    // 特性	元组 (Tuple)	元组结构体 (Tuple Struct)
+    // 定义语法	(i32, f64)	struct Color(i32, i32, i32);
+    // 类型名	没有名字（匿名类型）	有自定义名字（命名类型）
+    // 类型兼容性	只要成员类型和数量相同，类型就兼容	是全新的独立类型，即使结构完全一样也不能混用
+    // 用途	临时组合多个值，函数返回多值	强类型封装（Newtype模式），赋予语义，实现 Trait
+
+
+    // 2. 可以拥有方法和 Trait
+    // 普通元组只能用标准库实现好的功能。元组结构体是你定义的，你可以给它加方法：
+    // struct Point(f64, f64);
+    // impl Point {
+    //     fn distance_from_origin(&self) -> f64 {
+    //         (self.0.powi(2) + self.1.powi(2)).sqrt()
+    //     }
+    // }
 }
 
 fn test_split_borrowing() {
@@ -190,6 +264,9 @@ fn test_split_borrowing() {
     let mut pnt = make_point(2, 3);
     modify_coordinates(&mut pnt);
     println!("pnt after modify: {:?}", (pnt.x, pnt.y));
+
+
+    test_split_borrowing2();
 }
 
 //================================================================
@@ -210,10 +287,10 @@ fn test_slices() {
     println!("all use {{&a[0..a.len()]}}: {all:?}");
     println!("all2 use {{&a[..a.len()]}}: {all2:?}");
  
-    let test_last_Index: &[i32] = &a[3..a.len()];
-    let test_last_Index2: &[i32] = &a[3..];
-    println!("test_last_Index use {{&a[3..a.len()]}}: {test_last_Index:?}");
-    println!("test_last_Index2 use {{&a[3..]}}: {test_last_Index2:?}");
+    let test_last_index: &[i32] = &a[3..a.len()];
+    let test_last_index2: &[i32] = &a[3..];
+    println!("test_last_Index use {{&a[3..a.len()]}}: {test_last_index:?}");
+    println!("test_last_Index2 use {{&a[3..]}}: {test_last_index2:?}");
 
 
     let aa: [u32; 5] = [3,4,5,6,7];
@@ -254,8 +331,11 @@ fn test_slices() {
     // =====================
 
     // aa[3..5] 还是左闭右开,取的是第3和第4个值
-    let ss: &[u32] = &aa[3..5]; // 3..=5 error
+    let ss: &[u32] = &aa[3..5]; // 3..=5 error    
     println!("ss: {ss:?}");
+
+    let ss2 = &aa[2..4];
+
 }
 
 //================================================================
