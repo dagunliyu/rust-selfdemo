@@ -180,9 +180,15 @@ fn test_split_borrowing2() {
     
     // Point初始化时必须写字段名
     let mut pnt = Point {x:3, y:4};
+    let pnt_ref = &mut Point{x:3, y:6};
     let pnt1 = Point {x:3, y:4}; // Rust 默认一切都是不可变的，想改必须显式写 mut。
 
-    let pnt_ref = &mut Point{x:3, y:6};
+    //====================== error ======================
+    // let &mut pnt = Point {x: 3, y:4}; // error: 
+    // let PATTERN = EXPRESSION 语法的左边是模式匹配（Pattern Matching）。
+
+
+
 
     // 元组结构体没有命名的字段，所以必须使用 索引 来访问，就像普通元组一样
     // 元组结构体主要用于 "Newtype 模式"，或者当字段名不那么重要时
